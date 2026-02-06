@@ -102,7 +102,7 @@ Para preguntas o sugerencias sobre el proyecto:
 ## 🐛 Reportar Problemas
 
 Si encuentras un bug o tienes una sugerencia, por favor:
-1. Abre un [Issue](https://ssxx13.github.io/Vira-Med/issues)
+1. Redacta un correo a dardila@unal.edu.co
 2. Describe el problema detalladamente
 3. Incluye capturas de pantalla si es posible
 
