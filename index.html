@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vademécum Digital - Enfermería UNAL</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💊</text></svg>">
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { Search, Filter, Plus, Edit2, Trash2, Lock, Unlock, Eye, EyeOff, X, ChevronDown, ChevronUp } = lucide;
+
+        // Datos de ejemplo iniciales
+        const medicamentosIniciales = [
+          {
+            id: '1',
+            nombre: 'Paracetamol',
+            presentacion: 'Comprimidos 500mg',
+            posologia: '500-1000mg cada 6-8 horas. Máximo 4g/día',
+            mecanismo: 'Inhibidor de la síntesis de prostaglandinas a nivel del SNC',
+            reacciones: 'Hepatotoxicidad en sobredosis, náuseas, reacciones alérgicas',
+            rangoTerapeutico: '10-20 µg/mL',
+            perfusion: 'No aplica para presentación oral',
+            reconstitucion: 'No requiere',
+            estabilidad: '24 meses a temperatura ambiente',
+            ph: '5.5-7.0',
+            osmolaridad: 'Isotónica',
+            densidad: '1.2 g/cm³',
+            vesicante: 'No',
+            observaciones: 'Evitar en pacientes con hepatopatía',
+            familia: 'Analgésicos no opioides'
+          },
+          {
+            id: '2',
+            nombre: 'Amoxicilina',
+            presentacion: 'Cápsulas 500mg',
+            posologia: '500mg cada 8 horas durante 7-10 días',
+            mecanismo: 'Inhibidor de la síntesis de la pared celular bacteriana',
+            reacciones: 'Diarrea, náuseas, erupciones cutáneas, reacciones de hipersensibilidad',
+            rangoTerapeutico: 'No monitorizado rutinariamente',
+            perfusion: 'No aplica para presentación oral',
+            reconstitucion: 'No requiere',
+            estabilidad: '36 meses a temperatura ambiente',
+            ph: '3.5-6.0',
+            osmolaridad: 'Variable',
+            densidad: '1.1 g/cm³',
+            vesicante: 'No',
+            observaciones: 'Contraindicado en alergia a betalactámicos',
+            familia: 'Antibióticos betalactámicos'
+          },
+          {
+            id: '3',
+            nombre: 'Dopamina',
+            presentacion: 'Ampolla 200mg/5mL',
+            posologia: '2-20 µg/kg/min según efecto deseado',
+            mecanismo: 'Agonista dopaminérgico y adrenérgico',
+            reacciones: 'Taquicardia, arritmias, hipertensión, náuseas',
+            rangoTerapeutico: 'Ajustar según respuesta hemodinámica',
+            perfusion: 'Infusión continua IV. Calcular según peso',
+            reconstitucion: 'Diluir en solución glucosada 5% o salina 0.9%',
+            estabilidad: '24 horas una vez diluida',
+            ph: '2.5-5.0',
+            osmolaridad: 'Depende de la dilución',
+            densidad: '1.0 g/cm³',
+            vesicante: 'Sí - puede causar necrosis tisular',
+            observaciones: 'Usar vía central preferentemente. No mezclar con bicarbonato',
+            familia: 'Vasopresores'
+          }
+        ];
+
+        const familiasFarmacologicas = [
+          'Analgésicos no opioides',
+          'Analgésicos opioides',
+          'Antibióticos betalactámicos',
+          'Antibióticos macrólidos',
+          'Antibióticos quinolonas',
+          'Antiinflamatorios',
+          'Vasopresores',
+          'Antihipertensivos',
+          'Anticoagulantes',
+          'Sedantes',
+          'Otros'
+        ];
+
+        const presentacionesComunes = [
+          'Comprimidos',
+          'Cápsulas',
+          'Ampolla',
+          'Vial',
+          'Solución oral',
+          'Suspensión',
+          'Inyectable',
+          'Crema/Pomada'
+        ];
+
+        const App = () => {
+          const [medicamentos, setMedicamentos] = useState([]);
+          const [isAdmin, setIsAdmin] = useState(false);
+          const [showLogin, setShowLogin] = useState(false);
+          const [password, setPassword] = useState('');
+          const [showPassword, setShowPassword] = useState(false);
+          const [searchTerm, setSearchTerm] = useState('');
+          const [filtroFamilia, setFiltroFamilia] = useState('');
+          const [filtroPresentacion, setFiltroPresentacion] = useState('');
+          const [ordenAlfabetico, setOrdenAlfabetico] = useState('asc');
+          const [showFilters, setShowFilters] = useState(false);
+          const [editingMed, setEditingMed] = useState(null);
+          const [showForm, setShowForm] = useState(false);
+          const [selectedMed, setSelectedMed] = useState(null);
+          const [formData, setFormData] = useState({
+            nombre: '',
+            presentacion: '',
+            posologia: '',
+            mecanismo: '',
+            reacciones: '',
+            rangoTerapeutico: '',
+            perfusion: '',
+            reconstitucion: '',
+            estabilidad: '',
+            ph: '',
+            osmolaridad: '',
+            densidad: '',
+            vesicante: '',
+            observaciones: '',
+            familia: ''
+          });
+
+          // Cargar datos al iniciar
+          useEffect(() => {
+            const stored = localStorage.getItem('medicamentos');
+            if (stored) {
+              try {
+                setMedicamentos(JSON.parse(stored));
+              } catch (error) {
+                setMedicamentos(medicamentosIniciales);
+                localStorage.setItem('medicamentos', JSON.stringify(medicamentosIniciales));
+              }
+            } else {
+              setMedicamentos(medicamentosIniciales);
+              localStorage.setItem('medicamentos', JSON.stringify(medicamentosIniciales));
+            }
+          }, []);
+
+          const saveMedicamentos = (newMeds) => {
+            localStorage.setItem('medicamentos', JSON.stringify(newMeds));
+            setMedicamentos(newMeds);
+          };
+
+          const handleLogin = () => {
+            if (password === 'admin123') {
+              setIsAdmin(true);
+              setShowLogin(false);
+              setPassword('');
+            } else {
+              alert('Contraseña incorrecta');
+            }
+          };
+
+          const handleLogout = () => {
+            setIsAdmin(false);
+            setShowForm(false);
+            setEditingMed(null);
+          };
+
+          const handleSaveMedicamento = () => {
+            if (!formData.nombre || !formData.familia) {
+              alert('El nombre y la familia farmacológica son obligatorios');
+              return;
+            }
+
+            let newMeds;
+            if (editingMed) {
+              newMeds = medicamentos.map(med => 
+                med.id === editingMed.id ? { ...formData, id: editingMed.id } : med
+              );
+            } else {
+              const newMed = {
+                ...formData,
+                id: Date.now().toString()
+              };
+              newMeds = [...medicamentos, newMed];
+            }
+
+            saveMedicamentos(newMeds);
+            resetForm();
+          };
+
+          const handleDeleteMedicamento = (id) => {
+            if (window.confirm('¿Está seguro de eliminar este medicamento?')) {
+              const newMeds = medicamentos.filter(med => med.id !== id);
+              saveMedicamentos(newMeds);
+              if (selectedMed?.id === id) setSelectedMed(null);
+            }
+          };
+
+          const handleEditMedicamento = (med) => {
+            setEditingMed(med);
+            setFormData(med);
+            setShowForm(true);
+            setSelectedMed(null);
+          };
+
+          const resetForm = () => {
+            setFormData({
+              nombre: '',
+              presentacion: '',
+              posologia: '',
+              mecanismo: '',
+              reacciones: '',
+              rangoTerapeutico: '',
+              perfusion: '',
+              reconstitucion: '',
+              estabilidad: '',
+              ph: '',
+              osmolaridad: '',
+              densidad: '',
+              vesicante: '',
+              observaciones: '',
+              familia: ''
+            });
+            setEditingMed(null);
+            setShowForm(false);
+          };
+
+          const filteredMedicamentos = medicamentos
+            .filter(med => {
+              const matchSearch = med.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                 med.familia.toLowerCase().includes(searchTerm.toLowerCase());
+              const matchFamilia = !filtroFamilia || med.familia === filtroFamilia;
+              const matchPresentacion = !filtroPresentacion || 
+                                        med.presentacion.toLowerCase().includes(filtroPresentacion.toLowerCase());
+              return matchSearch && matchFamilia && matchPresentacion;
+            })
+            .sort((a, b) => {
+              if (ordenAlfabetico === 'asc') {
+                return a.nombre.localeCompare(b.nombre);
+              } else {
+                return b.nombre.localeCompare(a.nombre);
+              }
+            });
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+              {/* Header */}
+              <div className="bg-white shadow-md">
+                <div className="max-w-7xl mx-auto px-4 py-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-3xl font-bold text-indigo-700">💊 Vademécum Digital</h1>
+                      <p className="text-sm text-gray-600">Facultad de Enfermería - Universidad Nacional de Colombia</p>
+                    </div>
+                    <div>
+                      {isAdmin ? (
+                        <div className="flex gap-2 items-center">
+                          <span className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                            👤 Administrador
+                          </span>
+                          <button
+                            onClick={handleLogout}
+                            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-2"
+                          >
+                            <lucide.Lock size={16} />
+                            Cerrar sesión
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowLogin(true)}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
+                        >
+                          <lucide.Unlock size={16} />
+                          Acceso Admin
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Login Modal */}
+              {showLogin && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-2xl font-bold text-gray-800">Acceso Administrador</h2>
+                      <button onClick={() => setShowLogin(false)} className="text-gray-500 hover:text-gray-700">
+                        <lucide.X size={24} />
+                      </button>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          placeholder="Ingrese la contraseña"
+                        />
+                        <button
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-2.5 text-gray-500"
+                        >
+                          {showPassword ? <lucide.EyeOff size={20} /> : <lucide.Eye size={20} />}
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogin}
+                      className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+                    >
+                      Ingresar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Content */}
+              <div className="max-w-7xl mx-auto px-4 py-6">
+                {/* Barra de búsqueda y acciones */}
+                <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <lucide.Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Buscar medicamento por nombre o familia..."
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowFilters(!showFilters)}
+                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition flex items-center gap-2 justify-center"
+                    >
+                      <lucide.Filter size={20} />
+                      Filtros {showFilters ? <lucide.ChevronUp size={16} /> : <lucide.ChevronDown size={16} />}
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          resetForm();
+                          setShowForm(true);
+                        }}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2 justify-center"
+                      >
+                        <lucide.Plus size={20} />
+                        Nuevo Medicamento
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filtros expandibles */}
+                  {showFilters && (
+                    <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Familia Farmacológica</label>
+                        <select
+                          value={filtroFamilia}
+                          onChange={(e) => setFiltroFamilia(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="">Todas las familias</option>
+                          {familiasFarmacologicas.map(fam => (
+                            <option key={fam} value={fam}>{fam}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Presentación</label>
+                        <select
+                          value={filtroPresentacion}
+                          onChange={(e) => setFiltroPresentacion(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="">Todas las presentaciones</option>
+                          {presentacionesComunes.map(pres => (
+                            <option key={pres} value={pres}>{pres}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Orden Alfabético</label>
+                        <select
+                          value={ordenAlfabetico}
+                          onChange={(e) => setOrdenAlfabetico(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="asc">A - Z</option>
+                          <option value="desc">Z - A</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Formulario de edición/creación */}
+                {showForm && isAdmin && (
+                  <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-2xl font-bold text-gray-800">
+                        {editingMed ? 'Editar Medicamento' : 'Nuevo Medicamento'}
+                      </h2>
+                      <button onClick={resetForm} className="text-gray-500 hover:text-gray-700">
+                        <lucide.X size={24} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Medicamento *</label>
+                        <input
+                          type="text"
+                          value={formData.nombre}
+                          onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Familia Farmacológica *</label>
+                        <select
+                          value={formData.familia}
+                          onChange={(e) => setFormData({...formData, familia: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="">Seleccione...</option>
+                          {familiasFarmacologicas.map(fam => (
+                            <option key={fam} value={fam}>{fam}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Presentación</label>
+                        <input
+                          type="text"
+                          value={formData.presentacion}
+                          onChange={(e) => setFormData({...formData, presentacion: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Posología</label>
+                        <input
+                          type="text"
+                          value={formData.posologia}
+                          onChange={(e) => setFormData({...formData, posologia: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mecanismo de Acción</label>
+                        <textarea
+                          value={formData.mecanismo}
+                          onChange={(e) => setFormData({...formData, mecanismo: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          rows="2"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Reacciones Adversas</label>
+                        <textarea
+                          value={formData.reacciones}
+                          onChange={(e) => setFormData({...formData, reacciones: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          rows="2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Rango Terapéutico</label>
+                        <input
+                          type="text"
+                          value={formData.rangoTerapeutico}
+                          onChange={(e) => setFormData({...formData, rangoTerapeutico: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Perfusión y Velocidad</label>
+                        <input
+                          type="text"
+                          value={formData.perfusion}
+                          onChange={(e) => setFormData({...formData, perfusion: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Reconstitución y Dilución</label>
+                        <input
+                          type="text"
+                          value={formData.reconstitucion}
+                          onChange={(e) => setFormData({...formData, reconstitucion: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Estabilidad</label>
+                        <input
+                          type="text"
+                          value={formData.estabilidad}
+                          onChange={(e) => setFormData({...formData, estabilidad: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">pH</label>
+                        <input
+                          type="text"
+                          value={formData.ph}
+                          onChange={(e) => setFormData({...formData, ph: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Osmolaridad</label>
+                        <input
+                          type="text"
+                          value={formData.osmolaridad}
+                          onChange={(e) => setFormData({...formData, osmolaridad: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Densidad</label>
+                        <input
+                          type="text"
+                          value={formData.densidad}
+                          onChange={(e) => setFormData({...formData, densidad: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Vesicante/Irritante</label>
+                        <select
+                          value={formData.vesicante}
+                          onChange={(e) => setFormData({...formData, vesicante: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="">Seleccione...</option>
+                          <option value="Sí">Sí</option>
+                          <option value="No">No</option>
+                          <option value="Irritante">Irritante</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                        <textarea
+                          value={formData.observaciones}
+                          onChange={(e) => setFormData({...formData, observaciones: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          rows="3"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2 justify-end">
+                      <button
+                        onClick={resetForm}
+                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSaveMedicamento}
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                      >
+                        {editingMed ? 'Actualizar' : 'Guardar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de medicamentos */}
+                <div className="grid gap-4">
+                  {filteredMedicamentos.length === 0 ? (
+                    <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                      <p className="text-gray-500 text-lg">No se encontraron medicamentos</p>
+                    </div>
+                  ) : (
+                    filteredMedicamentos.map(med => (
+                      <div key={med.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
+                        <div className="p-6">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-2xl font-bold text-indigo-700">{med.nombre}</h3>
+                                <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium">
+                                  {med.familia}
+                                </span>
+                              </div>
+                              <p className="text-gray-600 mb-4">{med.presentacion}</p>
+                              
+                              {selectedMed?.id === med.id ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">📋 Posología:</h4>
+                                    <p className="text-gray-600 text-sm">{med.posologia}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">⚙️ Mecanismo de Acción:</h4>
+                                    <p className="text-gray-600 text-sm">{med.mecanismo}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">⚠️ Reacciones Adversas:</h4>
+                                    <p className="text-gray-600 text-sm">{med.reacciones}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">📊 Rango Terapéutico:</h4>
+                                    <p className="text-gray-600 text-sm">{med.rangoTerapeutico}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">💉 Perfusión y Velocidad:</h4>
+                                    <p className="text-gray-600 text-sm">{med.perfusion}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">🧪 Reconstitución y Dilución:</h4>
+                                    <p className="text-gray-600 text-sm">{med.reconstitucion}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">⏱️ Estabilidad:</h4>
+                                    <p className="text-gray-600 text-sm">{med.estabilidad}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">🔬 pH:</h4>
+                                    <p className="text-gray-600 text-sm">{med.ph}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">💧 Osmolaridad:</h4>
+                                    <p className="text-gray-600 text-sm">{med.osmolaridad}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">⚖️ Densidad:</h4>
+                                    <p className="text-gray-600 text-sm">{med.densidad}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-700 mb-1">🔴 Vesicante/Irritante:</h4>
+                                    <p className="text-gray-600 text-sm">{med.vesicante}</p>
+                                  </div>
+                                  <div className="md:col-span-2">
+                                    <h4 className="font-semibold text-gray-700 mb-1">📝 Observaciones:</h4>
+                                    <p className="text-gray-600 text-sm">{med.observaciones}</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-600">
+                                  <p><strong>Posología:</strong> {med.posologia}</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2 ml-4">
+                              <button
+                                onClick={() => setSelectedMed(selectedMed?.id === med.id ? null : med)}
+                                className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition"
+                                title={selectedMed?.id === med.id ? "Ver menos" : "Ver más"}
+                              >
+                                {selectedMed?.id === med.id ? <lucide.ChevronUp size={20} /> : <lucide.ChevronDown size={20} />}
+                              </button>
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    onClick={() => handleEditMedicamento(med)}
+                                    className="bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600 transition"
+                                    title="Editar"
+                                  >
+                                    <lucide.Edit2 size={20} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteMedicamento(med.id)}
+                                    className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition"
+                                    title="Eliminar"
+                                  >
+                                    <lucide.Trash2 size={20} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-12 pb-6 text-center text-gray-600 text-sm">
+                <p>Vademécum Digital - Facultad de Enfermería UNAL</p>
+                <p className="mt-1">Total de medicamentos: {medicamentos.length} | Mostrando: {filteredMedicamentos.length}</p>
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
