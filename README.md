@@ -83,7 +83,8 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 
 ## 👥 Autores
 
-Santiago Ardila
+Profesora lider: Maria Zoraida Rojas Marín 
+Estudiante Desarrolador: Dilan Santiago Ardila Gómez
 
 **Facultad de Enfermería - Universidad Nacional de Colombia**
 
